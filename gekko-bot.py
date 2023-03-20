@@ -8,14 +8,13 @@ intents = discord.Intents.all()
 client = discord.Client(command_prefix='?', intents=intents)
 
 glizzys_dict = dict()
-#current_dict = dict()
+current_dict = dict()
 #original_dict = dict()
 
 def read_file(guild: str):
     try:
         with open(guild+".txt") as glizzys_file:
             glizzys_reader = csv.reader(glizzys_file, delimiter=',')
-            line_count = 0
             for row in glizzys_reader:
                 if (len(row) == 7):
                     name = row[0]
@@ -32,7 +31,7 @@ def read_file(guild: str):
         glizzys_file = open(guild+".txt",'w')
         glizzys_file.close()
 
-# depreciated
+# deprecated
 def read_current_file(guild: str):
     try:
         with open(guild+".txt") as glizzys_file:
@@ -52,7 +51,7 @@ def read_current_file(guild: str):
         glizzys_file = open(guild+".txt",'w')
         glizzys_file.close()
 
-# depreciated
+# deprecated
 def update_file(guild: str):
     with open(guild+".txt", mode='w') as glizzys_file:
         glizzys_writer = csv.writer(glizzys_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -83,16 +82,12 @@ def new_user(message):
         glizzys_writer.writerow([message.author.name, 0, datetime.datetime.min, 50, datetime.datetime.min, 0, datetime.datetime.min])
         glizzys_file.close()
 
-def update_values(guild, username, glizzys = 0, collect_time = datetime.timedelta.min, steal_chance = 0, steal_time = datetime.timedelta.min, milk = 0, hunt_time = datetime.timedelta.min):
-    with open(guild+".txt", ) as glizzys_file:
+def update_values(guild, username, glizzys = 0, collect_time = datetime.timedelta(seconds=0), steal_chance = 0, steal_time = datetime.timedelta(seconds=0), milk = 0, hunt_time = datetime.timedelta(seconds=0)):
+    with open(guild+".txt", "r") as glizzys_file:
         glizzys_reader = csv.reader(glizzys_file, delimiter=',')
-        glizzys_writer = csv.writer(glizzys_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for row in glizzys_reader:
             if (len(row) == 7):
                 name = row[0]
-                if (name != username):
-                    glizzys_writer(row)
-                    continue
                 glizzys_count = int(row[1]) + glizzys
                 last_collected = datetime.datetime.fromisoformat(row[2]) + collect_time
                 steal_percent = int(row[3]) + steal_chance
@@ -103,7 +98,13 @@ def update_values(guild, username, glizzys = 0, collect_time = datetime.timedelt
                 last_stolen = datetime.datetime.fromisoformat(row[4]) + steal_time
                 glizzy_milk = int(row[5]) + milk
                 last_hunted = datetime.datetime.fromisoformat(row[6]) + hunt_time
-                glizzys_writer([name,glizzys_count,last_collected,steal_percent,last_stolen,glizzy_milk,last_hunted])
+                current_dict.update({name:[glizzys_count,last_collected,steal_percent,last_stolen,glizzy_milk,last_hunted]})
+        glizzys_file.close()
+    with open(guild+".txt", "w") as glizzys_file:
+        glizzys_writer = csv.writer(glizzys_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for key in current_dict.keys():
+            content = current_dict.get(key)
+            glizzys_writer.writerow([key,content[0],content[1],content[2],content[3],content[4],content[5]])
         glizzys_file.close()
 
 @client.event
@@ -176,7 +177,8 @@ async def on_message(message):
             if glizzy_milk >= 1:
                 hunt_chance = random.randrange(0,5)
                 caught_glizzys = hunt_chance * random.randrange(1,5)
-                update_values(str(message.guild.id),message.author.name,glizzys=caught_glizzys,milk=-1)
+                time_delta = datetime.datetime.now() - glizzys_dict.get(message.author.name)[5]
+                update_values(str(message.guild.id),message.author.name,glizzys=caught_glizzys,milk=-1,hunt_time=time_delta)
                 new_message = await message.channel.send(f":milk: Drinking Glizzy Milk...")
                 await asyncio.sleep(1)
                 await new_message.edit(content=":deciduous_tree: Searching bushes...")
@@ -280,7 +282,8 @@ async def on_message(message):
                     await message.channel.send(f":face_with_peeking_eye: <@{mentioned.id}> does not have enough Glizzys to steal from.")
                 elif (random.randrange(0,100) > glizzys_dict.get(message.author.name)[2]):
                     odds = random.randrange(1,10)
-                    update_values(str(message.guild.id),message.author.name,steal_chance=odds)
+                    time_delta = datetime.datetime.now() - glizzys_dict.get(message.author.name)[3]
+                    update_values(str(message.guild.id),message.author.name,steal_chance=odds,steal_time=time_delta)
                     new_message = await message.channel.send(":busts_in_silhouette: Sneaking up behind target...")
                     await asyncio.sleep(1)
                     await new_message.edit(content=":bubbles: Blinding target...")
@@ -293,8 +296,9 @@ async def on_message(message):
                     total = glizzys_dict.get(message.author.name)[0] + steal
                     odds = random.randrange(1,20)
                     victim_odds = random.randrange(1,5)
+                    time_delta = datetime.datetime.now() - glizzys_dict.get(message.author.name)[3]
                     update_values(str(message.guild.id),mentioned.name,glizzys=(-1)*steal,steal_chance=victim_odds)
-                    update_values(str(message.guild.id),message.author.name,glizzys=steal,steal_chance=(-1)*odds)
+                    update_values(str(message.guild.id),message.author.name,glizzys=steal,steal_chance=(-1)*odds,steal_time=time_delta)
                     new_message = await message.channel.send(":busts_in_silhouette: Sneaking up behind target...")
                     await asyncio.sleep(1)
                     await new_message.edit(content=":bubbles: Blinding target...")
