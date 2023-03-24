@@ -88,16 +88,24 @@ def update_values(guild, username, glizzys = 0, collect_time = datetime.timedelt
         for row in glizzys_reader:
             if (len(row) == 7):
                 name = row[0]
-                glizzys_count = int(row[1]) + glizzys
-                last_collected = datetime.datetime.fromisoformat(row[2]) + collect_time
-                steal_percent = int(row[3]) + steal_chance
-                if (steal_percent > 100):
-                    steal_percent = 100
-                elif (steal_percent < 10):
-                    steal_percent = 10
-                last_stolen = datetime.datetime.fromisoformat(row[4]) + steal_time
-                glizzy_milk = int(row[5]) + milk
-                last_hunted = datetime.datetime.fromisoformat(row[6]) + hunt_time
+                if (name == username):
+                    glizzys_count = int(row[1]) + glizzys
+                    last_collected = datetime.datetime.fromisoformat(row[2]) + collect_time
+                    steal_percent = int(row[3]) + steal_chance
+                    if (steal_percent > 100):
+                        steal_percent = 100
+                    elif (steal_percent < 10):
+                        steal_percent = 10
+                    last_stolen = datetime.datetime.fromisoformat(row[4]) + steal_time
+                    glizzy_milk = int(row[5]) + milk
+                    last_hunted = datetime.datetime.fromisoformat(row[6]) + hunt_time
+                else:
+                    glizzys_count = int(row[1])
+                    last_collected = datetime.datetime.fromisoformat(row[2])
+                    steal_percent = int(row[3])
+                    last_stolen = datetime.datetime.fromisoformat(row[4])
+                    glizzy_milk = int(row[5])
+                    last_hunted = datetime.datetime.fromisoformat(row[6])
                 current_dict.update({name:[glizzys_count,last_collected,steal_percent,last_stolen,glizzy_milk,last_hunted]})
         glizzys_file.close()
     with open(guild+".txt", "w") as glizzys_file:
