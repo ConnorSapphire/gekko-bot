@@ -3,6 +3,8 @@ import random
 import csv
 import datetime
 import asyncio
+import socket
+import time
 
 intents = discord.Intents.all()
 client = discord.Client(command_prefix='?', intents=intents)
@@ -10,6 +12,36 @@ client = discord.Client(command_prefix='?', intents=intents)
 glizzys_dict = dict()
 current_dict = dict()
 #original_dict = dict()
+
+# ^^^^^^^^^ Code from https://gist.github.com/Fmstrat -> https://gist.github.com/betrcode/0248f0fda894013382d7^^^^^^^^^^^^^
+ip = "CENSORED"
+port = 25565
+retry = 2
+delay = 5
+timeout = 3
+
+def isOpen(ip, port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        try:
+                s.connect((ip, int(port)))
+                s.shutdown(socket.SHUT_RDWR)
+                return True
+        except:
+                return False
+        finally:
+                s.close()
+
+def checkHost(ip, port):
+        ipup = False
+        for i in range(retry):
+                if isOpen(ip, port):
+                        ipup = True
+                        break
+                else:
+                        time.sleep(delay)
+        return ipup
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 def read_file(guild: str):
     try:
@@ -126,6 +158,12 @@ async def on_message(message):
     if message.author == client.user:
         return
     
+    if message.content.startswith('!server'):
+        if (checkHost(ip, port)):
+            await message.channel.send(":white_check_mark: Hoemines is up!")
+        else:
+            await message.channel.send(":x: Hoemines is down!")
+
     #FETCH DICTIONARY
     read_file(str(message.guild.id))
     if message.content.startswith('$'):
