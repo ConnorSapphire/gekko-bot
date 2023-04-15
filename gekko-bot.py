@@ -13,6 +13,7 @@ current_dict = dict()
 
 def read_file(guild: str):
     try:
+        glizzys_dict.clear()
         with open(guild+".txt") as glizzys_file:
             glizzys_reader = csv.reader(glizzys_file, delimiter=',')
             for row in glizzys_reader:
@@ -83,6 +84,7 @@ def new_user(message):
         glizzys_file.close()
 
 def update_values(guild, username, glizzys = 0, collect_time = datetime.timedelta(seconds=0), steal_chance = 0, steal_time = datetime.timedelta(seconds=0), milk = 0, hunt_time = datetime.timedelta(seconds=0)):
+    current_dict.clear()
     with open(guild+".txt", "r") as glizzys_file:
         glizzys_reader = csv.reader(glizzys_file, delimiter=',')
         for row in glizzys_reader:
@@ -340,4 +342,4 @@ async def on_message(message):
             seconds = int((total_seconds - (hours * 60 * 60) - (minutes * 60))//1)
             await message.channel.send(f':hourglass: <@{message.author.id}> must wait {hours:02d}:{minutes:02d}:{seconds:02d} until they can collect more Glizzys!')
 
-client.run('MTA4NTQyODkxMjY2MzgzNDY0NQ.GHFw7X.tZkKOX53pwDT1g3odwOegPfynklfTK5tpdL3a8')
+client.run('CENSORED')
