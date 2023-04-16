@@ -5,6 +5,7 @@ import datetime
 import asyncio
 import socket
 import time
+from mcstatus import JavaServer
 
 intents = discord.Intents.all()
 client = discord.Client(command_prefix='?', intents=intents)
@@ -12,12 +13,14 @@ client = discord.Client(command_prefix='?', intents=intents)
 glizzys_dict = dict()
 current_dict = dict()
 #original_dict = dict()
+server_dict = dict()
+react_list = list()
+current_server_dict = dict()
+current_react_list = list()
 
 # ^^^^^^^^^ Code from https://gist.github.com/Fmstrat -> https://gist.github.com/betrcode/0248f0fda894013382d7^^^^^^^^^^^^^
-ip = "CENSORED"
-port = 25565
 retry = 2
-delay = 5
+delay = 2
 timeout = 3
 
 def isOpen(ip, port):
@@ -42,6 +45,95 @@ def checkHost(ip, port):
                         time.sleep(delay)
         return ipup
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+def read_prop(guild: str):
+    try:
+        server_dict.clear()
+        react_list.clear()
+        with open(guild+"_properties.txt") as prop_file:
+            prop_reader = csv.reader(prop_file, delimiter=',')
+            for row in prop_reader:
+                if (len(row) > 0):
+                    if (row[0] == "server" and len(row) == 4):
+                        name = row[1]
+                        ip = row[2]
+                        port = row[3]
+                        server_dict.update({"name":name})
+                        server_dict.update({"ip":ip})
+                        server_dict.update({"port":port})
+                    elif (row[0] == "react_role" and len(row) == 5):
+                        channel = row[1]
+                        message = row[2]
+                        emoji = row[3]
+                        role = row[4]
+                        react_list.append([channel, message, emoji, role])
+            prop_file.close()
+    except FileNotFoundError:
+        prop_file = open(guild+"_properties.txt",'w')
+        prop_file.close()
+
+def update_roles(guild, channel, message, emoji, role):
+    current_server_dict.clear()
+    current_react_list.clear()
+    current_react_list.append([channel, message, emoji, role])
+    with open(guild+"_properties.txt", "r") as prop_file:
+        prop_reader = csv.reader(prop_file, delimiter=',')
+        for row in prop_reader:
+            if (len(row) > 0):
+                if (row[0] == "server" and len(row) == 4):
+                    name = row[1]
+                    ip = row[2]
+                    port = row[3]
+                    current_server_dict.update({"name":name})
+                    current_server_dict.update({"ip":ip})
+                    current_server_dict.update({"port":port})
+                elif (row[0] == "react_role" and len(row) == 5):
+                    channel = row[1]
+                    message = row[2]
+                    emoji = row[3]
+                    role = row[4]
+                    current_react_list.append([channel, message, emoji, role])
+        prop_file.close()
+    with open(guild+"_properties.txt", "w") as prop_file:
+        prop_writer = csv.writer(prop_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        server_name = current_server_dict.get("name")
+        server_ip = current_server_dict.get("ip")
+        server_port = current_server_dict.get("port")
+        if (server_name != None and server_ip != None and server_port != None):
+            prop_writer.writerow(["server",server_name,server_ip,server_port])
+        for ls in current_react_list:
+            ls.insert(0, "react_role")
+            prop_writer.writerow(ls)
+        prop_file.close()
+
+def update_server(guild, name, ip, port):
+    current_server_dict.clear()
+    current_react_list.clear()
+    current_server_dict.update({"name":name})
+    current_server_dict.update({"ip":ip})
+    current_server_dict.update({"port":port})
+    with open(guild+"_properties.txt", "r") as prop_file:
+        prop_reader = csv.reader(prop_file, delimiter=',')
+        for row in prop_reader:
+            if (len(row) > 0):
+                if (row[0] == "react_role" and len(row) == 5):
+                    channel = row[1]
+                    message = row[2]
+                    emoji = row[3]
+                    role = row[4]
+                    current_react_list.append([channel, message, emoji, role])
+        prop_file.close()
+    with open(guild+"_properties.txt", "w") as prop_file:
+        prop_writer = csv.writer(prop_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        server_name = current_server_dict.get("name")
+        server_ip = current_server_dict.get("ip")
+        server_port = current_server_dict.get("port")
+        if (server_name != None and server_ip != None and server_port != None):
+            prop_writer.writerow(["server",server_name,server_ip,server_port])
+        for ls in current_react_list:
+            ls.insert(0, "react_role")
+            prop_writer.writerow(ls)
+        prop_file.close()
 
 def read_file(guild: str):
     try:
@@ -157,16 +249,111 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    
-    if message.content.startswith('!server'):
-        if (checkHost(ip, port)):
-            await message.channel.send(":white_check_mark: Hoemines is up!")
-        else:
-            await message.channel.send(":x: Hoemines is down!")
 
-    #FETCH DICTIONARY
-    read_file(str(message.guild.id))
+    #FETCH DICTIONARY -> SERVER PROPERTIES
+    if message.content.startswith('!'):
+        read_prop(str(message.guild.id))
+
+    #HELP (!)
+    if message.content.startswith('!help'):
+        help_text = "- !help :\t\t\t\t\t\t\t\t\t\t\tDisplay this screen.\n"
+        server_text = "- !server :\t\t\t\t\t\t\t\t\t\t  Display whether the Minecraft server setup for monitoring is online.\n"
+        players_text = "- !players :\t\t\t\t\t\t\t\t\t\t Display how many players are on the Minecraft server setup for monitoring.\n"
+        set_server_text = "- !setserver <name> <ip> <port> :\t\t\t\t\tSet the Minecraft server to monitor. Must provide a name, IP address and port (default is 25565 for Java and 19132 for Bedrock). MUST BE ADMINISTRATOR TO USE!\n"
+        role_react_text = "- !rolereact <message link> <emoji> <role name> :\tSet a message to give a certain role when reacted to with a specified emoji. Must provide a link to the message, an emoji, and the name of a role in the server to add to a player (must be below there current highest role). MUST BE ADMINISTRATOR TO USE!\n"
+        await message.channel.send(f"**Commands available:**\n```{help_text}{server_text}{players_text}{set_server_text}{role_react_text}```")
+
+    #SET ROLE ON REACTION
+    if message.content.startswith('!rolereact'):
+        if (message.author.guild_permissions.administrator):
+            content = message.content.split()
+            if (len(content) < 4):
+                await message.channel.send(":x: Command must be in the format '!rolereact <message link> <emoji> <role name>'!")
+            else:
+                message_location = content[1].split("/")
+                if (len(message_location) != 7):
+                    await message.channel.send(":x: Please use a message link as the first argument of this command!")
+                else:
+                    try:
+                        message_channel_id = message_location[5]
+                        message_id = message_location[6]
+                        message_channel = message.guild.get_channel_or_thread(int(message_channel_id))
+                        if (message_channel != None):
+                            message_to_use = await message_channel.fetch_message(int(message_id))
+                        emoji = ascii(content[2])
+                        role_list = list()
+                        for i in range(3, len(content)):
+                            role_list.append(content[i])
+                        role_name = " ".join(role_list)
+                        role = discord.utils.get(message.guild.roles, name=role_name)
+                        if (role == None):
+                            await message.channel.send(":x: Please use the name of a valid role as the last argument of this command!")
+                        else:
+                            update_roles(str(message.guild.id), message_channel_id, message_id, emoji, role_name)
+                            await message.channel.send(f":white_check_mark: Successfully set reacting with {content[2]} to the message with ID {message_id} to cause a member to be given {role_name} role.")
+                    except (ValueError, discord.errors.NotFound) as error:
+                        await message.channel.send(":x: Please use a message link as the first argument of this command!")
+                    except TypeError:
+                        await message.channel.send(":x: Please use an emoji as the second argument of this command!")
+        else:
+            await message.channel.send(":x: You must be an administrator on this Discord server to use this command!")
+
+    #SET MC SERVER
+    if message.content.startswith('!setserver'):
+        if (message.author.guild_permissions.administrator):
+            content = message.content.split()
+            if (len(content) < 4):
+                await message.channel.send(":x: Command must be in the format '!setserver <server name> <server ip> <server port>'!")
+            else:
+                try:
+                    int(content[3])
+                    update_server(str(message.guild.id), content[1], content[2], content[3])
+                    await message.channel.send(f":white_check_mark: Gekko will now check {content[1]} with the ip {content[2]} and port {content[3]} for any Minecraft status commands.")
+                except ValueError:
+                    await message.channel.send(f":x: The server port must be numeric! You entered {content[3]}!")
+        else:
+            await message.channel.send(":x: You must be an administrator on this Discord server to use this command!")
+    
+    #MC SERVER STATUS
+    if message.content.startswith('!server'):
+        server_name = server_dict.get("name")
+        ip = server_dict.get("ip")
+        port = server_dict.get("port")
+        if (server_name != None and ip != None and port != None):
+            if (checkHost(ip, port)):
+                await message.channel.send(f":white_check_mark: {server_name} is up!")
+            else:
+                await message.channel.send(f":x: {server_name} is down!")
+        else:
+            await message.channel.send(":x: An admin must set a Minecraft server to check using !setserver.")
+
+    #MC PLAYERS
+    if message.content.startswith('!players'):
+        server_name = server_dict.get("name")
+        ip = server_dict.get("ip")
+        port = server_dict.get("port")
+        if (server_name != None and ip != None and port != None):
+            if (checkHost(ip, port)):
+                server = JavaServer.lookup(f"{ip}:{port}", 3)
+                online_amount = server.query().players.online
+                online_players = server.status().players.sample
+                online_names = list()
+                if (online_players != None):
+                    for player in online_players:
+                        online_names.append(player.name)
+                names_string = ", ".join(online_names)
+                if (online_amount > 0):
+                    await message.channel.send(f":smile: There are {online_amount} players online. They are: {names_string}.")
+                else:
+                    await message.channel.send(":sob: No players are currently online.")
+            else:
+                await message.channel.send(f":x: {server_name} is down!")
+        else:
+            await message.channel.send(":x: An admin must set a Minecraft server to check using !setserver.")
+
+    #FETCH DICTIONARY -> GLIZZYS
     if message.content.startswith('$'):
+        read_file(str(message.guild.id))
         if message.author.name not in glizzys_dict.keys():
             new_user(message)
     
@@ -379,5 +566,16 @@ async def on_message(message):
             minutes = int((total_seconds - (hours * 60 * 60)) // 60)
             seconds = int((total_seconds - (hours * 60 * 60) - (minutes * 60))//1)
             await message.channel.send(f':hourglass: <@{message.author.id}> must wait {hours:02d}:{minutes:02d}:{seconds:02d} until they can collect more Glizzys!')
+
+@client.event
+async def on_raw_reaction_add(payload):
+    read_prop(str(payload.guild_id))
+
+    for react_role in react_list:
+        if (payload.channel_id == int(react_role[0])):
+            if (payload.message_id == int(react_role[1])):
+                if (ascii(payload.emoji.name) == react_role[2]):
+                    role = discord.utils.get(payload.member.guild.roles, name=react_role[3])
+                    await payload.member.add_roles(role)
 
 client.run('CENSORED')
