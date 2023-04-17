@@ -335,7 +335,7 @@ async def on_message(message):
         if (server_name != None and ip != None and port != None):
             if (checkHost(ip, port)):
                 server = JavaServer.lookup(f"{ip}:{port}", 3)
-                online_amount = server.query().players.online
+                online_amount = server.status().players.online
                 online_players = server.status().players.sample
                 online_names = list()
                 if (online_players != None):
