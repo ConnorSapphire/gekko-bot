@@ -1,5 +1,5 @@
 # Gekko Bot
-Gekko Bot is a Discord bot designed for a fun and competitive fake economy game. Users can earn and compete for "Glizzys" with their friends.
+Gekko Bot is a Discord bot designed for a fun and competitive fake economy game. Users can earn and compete for fake currency with their friends.
 
 ## Features
 - Economy System: Earn, spend, and compete for Glizzys.
